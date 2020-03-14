@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AndroidCV</string>
+    <string name="capture_button">Capture Image</string>
+    <string name="camera_button">Change Camera</string>
+</resources>

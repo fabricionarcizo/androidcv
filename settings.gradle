@@ -1,0 +1,2 @@
+include ':app', ':opencv-4.0.1'
+rootProject.name='AndroidCV'

@@ -123,14 +123,13 @@ class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCa
         if (index == 1)
             Core.flip(image, image, 1)
 
-        if (cont == 1)
-            return convertToGrayscale(image)
-        else if (cont == 2)
-            return convertToBGRA(image)
-        else if (cont == 3)
-            return convertToCanny(image)
+        when (cont) {
+            1 -> return convertToGrayscale(image)
+            2 -> return convertToBGRA(image)
+            3 -> return convertToCanny(image)
+        }
 
-        return image!!
+        return image
     }
 
     private fun convertToGrayscale(image: Mat?): Mat {

@@ -1,7 +1,14 @@
 package dk.itu.moapd.androidcv
 
+import android.content.ContentValues
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.*
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import kotlinx.android.synthetic.main.fragment_main.*
 import org.opencv.android.BaseLoaderCallback
@@ -9,9 +16,13 @@ import org.opencv.android.CameraBridgeViewBase
 import org.opencv.android.LoaderCallbackInterface
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.Core
-import org.opencv.core.CvType
+import org.opencv.core.CvType.*
 import org.opencv.core.Mat
+import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -42,6 +53,20 @@ class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCa
             camera_view.disableView()
             camera_view.setCameraIndex(index)
             camera_view.enableView()
+        }
+
+        capture_button.setOnClickListener {
+            val bgrImage = rgbaImage!!.clone()
+            Imgproc.cvtColor(bgrImage, bgrImage, Imgproc.COLOR_RGBA2BGR, 3)
+
+            val path = getPhotoFileUri()
+            val file = File(path.path.toString())
+            if (Imgcodecs.imwrite(file.toString(), bgrImage))
+                Toast.makeText(
+                    requireContext(),
+                    "The image has been successfully saved",
+                    Toast.LENGTH_LONG
+                ).show()
         }
 
         loaderCallback = object : BaseLoaderCallback(activity) {
@@ -83,7 +108,7 @@ class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCa
     }
 
     override fun onCameraViewStarted(width: Int, height: Int) {
-        rgbaImage = Mat(height, width, CvType.CV_8UC4)
+        rgbaImage = Mat(height, width, CV_8UC4)
     }
 
     override fun onCameraViewStopped() {
@@ -93,6 +118,7 @@ class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCa
     override fun onCameraFrame(inputFrame: CameraBridgeViewBase.CvCameraViewFrame?): Mat {
 
         val image = inputFrame?.rgba()
+        rgbaImage = image!!.clone()
 
         if (index == 1)
             Core.flip(image, image, 1)
@@ -133,6 +159,36 @@ class MainFragment : Fragment(), View.OnTouchListener, CameraBridgeViewBase.CvCa
         thresh.release()
 
         return canny
+    }
+
+    private fun getPhotoFileUri(): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "IMG_${timeStamp}.jpg"
+
+        var uri: Uri? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = requireContext().contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/app_name/")
+            }
+
+            uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        }
+
+        return uri ?: getUriForPreQ(fileName)
+    }
+
+    private fun getUriForPreQ(fileName: String): Uri {
+        val dir = requireContext().getExternalFilesDir(Environment.DIRECTORY_DCIM)
+        val photoFile = File(dir, "/AndroidCV/$fileName")
+        if (photoFile.parentFile?.exists() == false) photoFile.parentFile?.mkdir()
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "dk.itu.moapd.androidcv.fileprovider",
+            photoFile
+        )
     }
 
 }
